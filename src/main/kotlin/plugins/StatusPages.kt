@@ -13,5 +13,5 @@ fun Application.configureStatusPages() {
                 status = HttpStatusCode.NotFound,
             )
         }
-    }
+    } 
 }
