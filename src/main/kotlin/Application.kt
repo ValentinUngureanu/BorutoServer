@@ -14,7 +14,7 @@ fun Application.module() {
     configureKoin()
     configureSerialization()
     configureMonitoring()
+    configureStatusPages()
     configureRouting()
     configureDefaultHeaders()
-    configureStatusPages()
 }

@@ -6,6 +6,12 @@ plugins {
     kotlin("jvm") version "2.1.10"
     id("io.ktor.plugin") version "3.2.3"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.1.10"
+    id("org.jlleitschuh.gradle.ktlint") version "12.1.0"
+}
+ktlint {
+    android.set(false)
+    outputToConsole.set(true)
+    ignoreFailures.set(false)
 }
 
 group = "com.example"
@@ -28,5 +34,4 @@ dependencies {
     implementation("io.ktor:ktor-server-status-pages")
     testImplementation("io.ktor:ktor-server-test-host")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlinVersion")
-
 }

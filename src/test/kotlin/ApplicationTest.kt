@@ -1,31 +1,26 @@
 package com.example
 
 import com.example.models.ApiResponse
-import com.example.repository.HeroRepository
 import com.example.repository.HeroRepositoryImpl
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
-import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
-import org.koin.java.KoinJavaComponent.inject
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class ApplicationTest {
-    private val heroRepository: HeroRepository by inject(HeroRepository::class.java)
-
     @Test
     fun `access root endpoint, assert correct information`() =
         testApplication {
             application {
                 module()
             }
-            client.get("/").apply {
-                assertEquals(HttpStatusCode.OK, status)
-                assertEquals("Welcome to Boruto API", bodyAsText())
-            }
+            val response = client.get("/")
+            assertEquals(HttpStatusCode.OK, response.status)
+            assertEquals("Welcome to Boruto API", response.bodyAsText())
         }
 
     @ExperimentalSerializationApi
@@ -67,46 +62,106 @@ class ApplicationTest {
 
     @ExperimentalSerializationApi
     @Test
-    fun `access all heroes endpoint, assert correct information`() =
+    fun `access all heroes endpoint, query non existing page number, assert error`() =
         testApplication {
             application {
                 module()
             }
-            client.get("/boruto/heroes").apply {
-                assertEquals(HttpStatusCode.OK, status)
-                val expected =
-                    ApiResponse(
-                        success = true,
-                        message = "ok",
-                        prevPage = null,
-                        nextPage = 2,
-                        heroes = heroRepository.page1,
-                    )
-                val actual = Json.decodeFromString<ApiResponse>(this.bodyAsText())
-                assertEquals(expected, actual)
-            }
+
+            val response = client.get("/boruto/heroes?page=6")
+            assertEquals(HttpStatusCode.NotFound, response.status)
+
+            assertEquals(expected = "Page not Found", actual = response.bodyAsText())
         }
 
     @ExperimentalSerializationApi
     @Test
-    fun `access all heroes endpoint, query second page, assert correct information`() =
+    fun `access all heroes endpoint, query invalid page number, assert error`() =
         testApplication {
             application {
                 module()
             }
-            client.get("/boruto/heroes?page=2").apply {
-                assertEquals(HttpStatusCode.OK, status)
-                val expected =
-                    ApiResponse(
-                        success = true,
-                        message = "ok",
-                        prevPage = 1,
-                        nextPage = 3,
-                        heroes = heroRepository.page2,
-                    )
-                val actual = Json.decodeFromString<ApiResponse>(this.bodyAsText())
-                assertEquals(expected, actual)
+            val response = client.get("/boruto/heroes?page=invalid")
+            assertEquals(HttpStatusCode.BadRequest, response.status)
+            val expected =
+                ApiResponse(
+                    success = false,
+                    message = "Only Numbers Allowed.",
+                    prevPage = null,
+                    nextPage = null,
+                    heroes = emptyList(),
+                )
+            val actual = Json.decodeFromString<ApiResponse>(response.bodyAsText())
+            assertEquals(expected, actual)
+        }
+
+    @ExperimentalSerializationApi
+    @Test
+    fun `access search heroes endpoint, query hero name, assert single hero result`() =
+        testApplication {
+            application {
+                module()
             }
+            val response = client.get("/boruto/heroes/search?name=sas")
+            assertEquals(HttpStatusCode.OK, response.status)
+
+            val actual = Json.decodeFromString<ApiResponse>(response.bodyAsText()).heroes.size
+            assertEquals(expected = 1, actual)
+        }
+
+    @ExperimentalSerializationApi
+    @Test
+    fun `access search heroes endpoint, query hero name, assert multiple heroes result`() =
+        testApplication {
+            application {
+                module()
+            }
+            val response = client.get("/boruto/heroes/search?name=sa")
+            assertEquals(HttpStatusCode.OK, response.status)
+
+            val actual = Json.decodeFromString<ApiResponse>(response.bodyAsText()).heroes.size
+            assertEquals(expected = 3, actual)
+        }
+
+    @ExperimentalSerializationApi
+    @Test
+    fun `access search heroes endpoint, query an empty hero name, assert empty list as a result`() =
+        testApplication {
+            application {
+                module()
+            }
+            val response = client.get("/boruto/heroes/search?name=")
+            assertEquals(HttpStatusCode.OK, response.status)
+
+            val actual = Json.decodeFromString<ApiResponse>(response.bodyAsText()).heroes
+            assertEquals(expected = emptyList(), actual)
+        }
+
+    @ExperimentalSerializationApi
+    @Test
+    fun `access search heroes endpoint, query non existing hero, assert empty list as a result`() =
+        testApplication {
+            application {
+                module()
+            }
+            val response = client.get("/boruto/heroes/search?name=unknown")
+            assertEquals(HttpStatusCode.OK, response.status)
+
+            val actual = Json.decodeFromString<ApiResponse>(response.bodyAsText()).heroes
+            assertEquals(expected = emptyList(), actual)
+        }
+
+    @ExperimentalSerializationApi
+    @Test
+    fun `access non existing endpoint, assert not found`() =
+        testApplication {
+            application {
+                module()
+            }
+            val response = client.get("/unknown")
+
+            assertEquals(HttpStatusCode.NotFound, response.status)
+            assertEquals(expected = "Page not Found", actual = response.bodyAsText())
         }
 }
 
